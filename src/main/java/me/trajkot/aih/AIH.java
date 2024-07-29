@@ -4,6 +4,7 @@ import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
+import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientClientStatus;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
@@ -50,10 +51,29 @@ public final class AIH extends JavaPlugin {
                 if (event.getPacketType() == PacketType.Play.Client.CLIENT_STATUS) {
                     if (new WrapperPlayClientClientStatus(event).getAction().equals(WrapperPlayClientClientStatus.Action.OPEN_INVENTORY_ACHIEVEMENT)) {
                         playerManager.getAIHPlayer(player).isInventoryOpen = true;
+                        playerManager.getAIHPlayer(player).clicks = 0;
                         playerManager.getAIHPlayer(player).lastInventoryOpen = System.currentTimeMillis();
                     }
                 } else if (event.getPacketType() == PacketType.Play.Client.CLOSE_WINDOW) {
                     playerManager.getAIHPlayer(player).isInventoryOpen = false;
+                    playerManager.getAIHPlayer(player).clicks = 0;
+                    playerManager.getAIHPlayer(player).lastItemClickDiffs.clear();
+                    playerManager.getAIHPlayer(player).lastInventoryClose = System.currentTimeMillis();
+                }
+            }
+            @Override
+            public void onPacketSend(final PacketSendEvent event) {
+                if (!(event.getPlayer() instanceof Player)) return;
+                Player player = (Player) event.getPlayer();
+
+                if(event.getPacketType() == PacketType.Play.Server.OPEN_WINDOW) {
+                    playerManager.getAIHPlayer(player).isInventoryOpen = true;
+                    playerManager.getAIHPlayer(player).clicks = 0;
+                    playerManager.getAIHPlayer(player).lastInventoryOpen = System.currentTimeMillis();
+                } else if(event.getPacketType() == PacketType.Play.Server.CLOSE_WINDOW) {
+                    playerManager.getAIHPlayer(player).isInventoryOpen = false;
+                    playerManager.getAIHPlayer(player).clicks = 0;
+                    playerManager.getAIHPlayer(player).lastItemClickDiffs.clear();
                     playerManager.getAIHPlayer(player).lastInventoryClose = System.currentTimeMillis();
                 }
             }

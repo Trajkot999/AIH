@@ -35,7 +35,7 @@ public class Check implements Listener {
         aihPlayer.violations++;
 
         for(Player staffPlayer : AIH.getPlayerManager().getAihStaff()) {
-            staffPlayer.sendMessage(ChatColor.translateAlternateColorCodes('&', "&6AIH &8> &e" + player.getName() + " &7" + message + " &6x" + aihPlayer.violations + (experimental ? "&cDEV" : "")));
+            staffPlayer.sendMessage(ChatColor.translateAlternateColorCodes('&', "&6AIH &8> &e" + player.getName() + " &7" + message + " &6x" + aihPlayer.violations + (experimental ? " &cdev" : "")));
         }
 
         if(!experimental && !punishCommand.isEmpty() && aihPlayer.violations > maxViolations) {
@@ -51,6 +51,7 @@ public class Check implements Listener {
     public void onInventoryClose(InventoryCloseEvent e) {
         Player p = (Player) e.getPlayer();
         AIH.getPlayerManager().getAIHPlayer(p).isInventoryOpen = false;
+        AIH.getPlayerManager().getAIHPlayer(p).clicks = 0;
         AIH.getPlayerManager().getAIHPlayer(p).lastInventoryClose = System.currentTimeMillis();
         AIH.getPlayerManager().getAIHPlayer(p).lastItemClickDiffs.clear();
     }
@@ -59,6 +60,7 @@ public class Check implements Listener {
     public void onInventoryOpen(InventoryOpenEvent e) {
         Player p = (Player) e.getPlayer();
         AIH.getPlayerManager().getAIHPlayer(p).lastInventoryOpen = System.currentTimeMillis();
+        AIH.getPlayerManager().getAIHPlayer(p).clicks = 0;
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -67,14 +69,15 @@ public class Check implements Listener {
         AIH_Player aihPlayer = AIH.getPlayerManager().getAIHPlayer(p);
 
         int ping = PacketEvents.getAPI().getPlayerManager().getPing(p);
-
         if (p.getGameMode().equals(GameMode.CREATIVE)) return;
 
-        if (aihPlayer.isInventoryOpen) {
-            fail(p, "nie ma otwartego gui gdy klika &8ping: " + ping + "ms", true);
-            if(cancelClick || safeCancelClick) {
-                e.setCancelled(true);
-                p.closeInventory();
+        if (!aihPlayer.isInventoryOpen) {
+            if(aihPlayer.clicks++ > 0) {
+                fail(p, "nie ma otwartego gui gdy klika &8ping: " + ping + "ms", true);
+                if(cancelClick || safeCancelClick) {
+                    e.setCancelled(true);
+                    p.closeInventory();
+                }
             }
         }
 
@@ -113,9 +116,11 @@ public class Check implements Listener {
 
         long lastClick = System.currentTimeMillis() - aihPlayer.lastInventoryClick;
 
-        if(e.getCurrentItem() != null && !e.getAction().equals(InventoryAction.NOTHING) && !e.getAction().equals(InventoryAction.MOVE_TO_OTHER_INVENTORY)) {
+        if(e.getCurrentItem() != null && !e.getAction().equals(InventoryAction.NOTHING)) {
+            if(e.getSlot() == aihPlayer.lastClickedSlot && e.getAction().equals(InventoryAction.HOTBAR_MOVE_AND_READD)) return;
+
             if (lastClick < 1L) {
-                if(!e.getAction().equals(InventoryAction.HOTBAR_SWAP) && !e.getAction().equals(InventoryAction.HOTBAR_MOVE_AND_READD)) {
+                if(!e.getAction().equals(InventoryAction.HOTBAR_SWAP)) {
                     fail(p, "natychmiastowo klika w gui &8instant, ping: " + ping + "ms", false);
 
                     if(cancelClick || safeCancelClick) {
