@@ -1,0 +1,13 @@
+cancel-click: false
+safe-cancel-click: true
+
+#punish-command: 'kick %player% &6&lAntyCheat &7- Wylacz Cheaty!'
+punish-command: ''
+
+#broadcast-message: '&6AntyCheat &7wykryl ze &e%player% &7uzywal cheatow i usunal go z serwera!'
+broadcast-message: ''
+
+max-violations: 20
+
+# czas resetowania flag (w minutach)
+violations-reset-interval: 8

@@ -1,0 +1,10 @@
+name: AIH
+version: '${project.version}'
+main: me.trajkot.aih.AIH
+depend: [packetevents]
+authors: [Trajkot]
+description: Anti Inventory Hacks
+
+permissions:
+  aih.alerts:
+    default: op
