@@ -1,6 +1,9 @@
 package me.trajkot.aih.listener;
 
 import me.trajkot.aih.AIH;
+import me.trajkot.aih.player.AIHPlayer;
+import me.trajkot.aih.player.AIHPlayerManager;
+import org.bukkit.ChatColor;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -10,18 +13,26 @@ public class RegisterListener implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        AIH.getPlayerManager().registerAIHPlayer(event.getPlayer());
+        AIHPlayerManager aihPlayerManager = AIH.INSTANCE.getPlayerManager();
 
-        if(event.getPlayer().isOp() || event.getPlayer().hasPermission("aih.alerts")) {
-            AIH.getPlayerManager().registerAIHStaff(event.getPlayer());
+        aihPlayerManager.registerAIHPlayer(event.getPlayer());
+
+        AIHPlayer aihPlayer = aihPlayerManager.getAIHPlayer(event.getPlayer());
+
+        if(event.getPlayer().hasPermission("aih.main") || event.getPlayer().hasPermission("aih.alerts")) {
+            aihPlayerManager.registerAIHStaff(event.getPlayer());
+            aihPlayer.setAlertsEnabled(true);
+            event.getPlayer().sendMessage(ChatColor.translateAlternateColorCodes('&', AIH.INSTANCE.getAIHConfig().getConfig().getString("prefix") + " &fAlerts " + (aihPlayer.isAlertsEnabled() ? "enabled" : "disabled")));
         }
 
-        AIH.getPlayerManager().getAIHPlayer(event.getPlayer()).resetViolations();
+        aihPlayer.resetViolations();
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        AIH.getPlayerManager().unregisterAIHPlayer(event.getPlayer());
-        AIH.getPlayerManager().unregisterAIHStaff(event.getPlayer());
+        AIHPlayerManager aihPlayerManager = AIH.INSTANCE.getPlayerManager();
+
+        aihPlayerManager.unregisterAIHPlayer(event.getPlayer());
+        aihPlayerManager.unregisterAIHStaff(event.getPlayer());
     }
 }

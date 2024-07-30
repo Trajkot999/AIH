@@ -7,8 +7,8 @@ import java.io.File;
 
 public class AIHConfig {
 
-    FileConfiguration config;
-    static File configf;
+    private FileConfiguration config;
+    private File configf;
 
     public AIHConfig() {
         createConfig();
@@ -30,5 +30,14 @@ public class AIHConfig {
         try {
             config.load(configf);
         } catch (Exception ignore) {}
+    }
+
+    public void reloadConfig() {
+        config = YamlConfiguration.loadConfiguration(configf);
+        try {
+            config.load(configf);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

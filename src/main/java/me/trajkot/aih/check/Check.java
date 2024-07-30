@@ -2,7 +2,12 @@ package me.trajkot.aih.check;
 
 import com.github.retrooper.packetevents.PacketEvents;
 import me.trajkot.aih.AIH;
-import me.trajkot.aih.player.AIH_Player;
+import me.trajkot.aih.player.AIHPlayer;
+import me.trajkot.aih.player.AIHPlayerManager;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.chat.HoverEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
@@ -15,34 +20,75 @@ import java.util.List;
 
 public class Check implements Listener {
 
-    private final int maxViolations;
-    private final String punishCommand;
-    private final String broadcastMessage;
     private final boolean cancelClick;
     private final boolean safeCancelClick;
 
+    private final String prefix;
+    private final String alertMessage;
+    private final String devSymbol;
+
+    private final int maxViolations;
+    private final String punishCommand;
+    private final String broadcastMessage;
+
+    private final String message1, message2, message3, message4, message5, message6, message7;
+
     public Check() {
-        cancelClick = AIH.getAIHConfig().getConfig().getBoolean("cancel-click");
-        safeCancelClick = AIH.getAIHConfig().getConfig().getBoolean("safe-cancel-click");
-        punishCommand = AIH.getAIHConfig().getConfig().getString("punish-command");
-        broadcastMessage = AIH.getAIHConfig().getConfig().getString("broadcast-message");
-        maxViolations = AIH.getAIHConfig().getConfig().getInt("max-violations");
+        cancelClick = AIH.INSTANCE.getAIHConfig().getConfig().getBoolean("cancel-click");
+        safeCancelClick = AIH.INSTANCE.getAIHConfig().getConfig().getBoolean("safe-cancel-click");
+
+        prefix = AIH.INSTANCE.getAIHConfig().getConfig().getString("prefix");
+        alertMessage = AIH.INSTANCE.getAIHConfig().getConfig().getString("alerts.alert-message");
+        devSymbol = AIH.INSTANCE.getAIHConfig().getConfig().getString("alerts.dev-symbol");
+
+        punishCommand = AIH.INSTANCE.getAIHConfig().getConfig().getString("punishments.punish-command");
+        broadcastMessage = AIH.INSTANCE.getAIHConfig().getConfig().getString("punishments.broadcast-message");
+        maxViolations = AIH.INSTANCE.getAIHConfig().getConfig().getInt("violations.max-violations");
+
+        boolean isEnglish = AIH.INSTANCE.getAIHConfig().getConfig().getString("alerts.message-language").equalsIgnoreCase("English");
+
+        message1 = isEnglish ? "doesn't have an open gui while clicking on items" : "nie ma otwartego gui gdy klika na itemy";
+        message2 = isEnglish ? "is sprinting while clicking on items" : "sprintuje gdy klika na itemy";
+        message3 = isEnglish ? "is sneaking while clicking on items" : "kuca gdy klika na itemy";
+        message4 = isEnglish ? "is clicking on items immediately after opening an gui" : "klika na itemy natychmiast po otwarciu gui";
+        message5 = isEnglish ? "is clicking on items immediately in a gui" : "natychmiastowo klika na itemy w gui";
+        message6 = isEnglish ? "got too similar time between clicking on items" : "ma zbyt podobny czas miedzy kliknieciami na itemy";
+        message7 = isEnglish ? "is clicking on items too fast" : "zbyt szybko klika itemy";
     }
 
-    private void fail(Player player, String message, boolean experimental) {
-        AIH_Player aihPlayer = AIH.getPlayerManager().getAIHPlayer(player);
+    private void fail(Player player, String message, boolean dev) {
+        AIHPlayerManager aihPlayerManager = AIH.INSTANCE.getPlayerManager();
+        AIHPlayer aihPlayer = aihPlayerManager.getAIHPlayer(player);
 
-        aihPlayer.violations++;
+        if (aihPlayer == null) return;
 
-        for(Player staffPlayer : AIH.getPlayerManager().getAihStaff()) {
-            staffPlayer.sendMessage(ChatColor.translateAlternateColorCodes('&', "&6AIH &8> &e" + player.getName() + " &7" + message + " &6x" + aihPlayer.violations + (experimental ? " &cdev" : "")));
+        aihPlayer.setViolations(aihPlayer.getViolations() + 1);
+
+        String playerName = player.getName();
+
+        final TextComponent configAlertMessage = new TextComponent(ChatColor.translateAlternateColorCodes('&', alertMessage)
+                .replaceAll("%prefix%", ChatColor.translateAlternateColorCodes('&', prefix))
+                .replaceAll("%player%", playerName)
+                .replaceAll("%message%", message)
+                .replaceAll("%ping%", String.valueOf(PacketEvents.getAPI().getPlayerManager().getPing(player)))
+                .replaceAll("%dev%", dev ? devSymbol : "")
+                .replaceAll("%vl%", String.valueOf(aihPlayer.getViolations()))
+                .replaceAll("%maxvl%", String.valueOf(maxViolations)));
+
+        configAlertMessage.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + playerName));
+        configAlertMessage.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder(ChatColor.translateAlternateColorCodes('&', "&6&lClick to teleport to &f" + playerName)).create()));
+
+        for (Player staffPlayer : aihPlayerManager.getAihStaff()) {
+            if (aihPlayerManager.getAIHPlayer(staffPlayer).isAlertsEnabled())
+                staffPlayer.spigot().sendMessage(configAlertMessage);
         }
 
-        if(!experimental && !punishCommand.isEmpty() && aihPlayer.violations > maxViolations) {
-            if(!AIH.getPlayerManager().getAIHPlayer(player).gotPunished) {
-                if(!broadcastMessage.isEmpty()) Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', broadcastMessage.replaceAll("%player%", AIH.getPlayerManager().getAIHPlayer(player).player.getName())));
-                Bukkit.getScheduler().runTask(AIH.INSTANCE, () -> Bukkit.getServer().dispatchCommand(Bukkit.getServer().getConsoleSender(), ChatColor.translateAlternateColorCodes('&', punishCommand.replaceAll("%player%", AIH.getPlayerManager().getAIHPlayer(player).player.getName()))));
-                AIH.getPlayerManager().getAIHPlayer(player).gotPunished = true;
+        if (!dev && !punishCommand.isEmpty() && aihPlayer.getViolations() > maxViolations) {
+            if (!aihPlayer.isGotPunished()) {
+                if (!broadcastMessage.isEmpty())
+                    Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', broadcastMessage.replaceAll("%player%", playerName)));
+                Bukkit.getScheduler().runTask(AIH.INSTANCE, () -> Bukkit.getServer().dispatchCommand(Bukkit.getServer().getConsoleSender(), ChatColor.translateAlternateColorCodes('&', punishCommand.replaceAll("%player%", playerName))));
+                aihPlayer.setGotPunished(true);
             }
         }
     }
@@ -50,31 +96,42 @@ public class Check implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void onInventoryClose(InventoryCloseEvent e) {
         Player p = (Player) e.getPlayer();
-        AIH.getPlayerManager().getAIHPlayer(p).isInventoryOpen = false;
-        AIH.getPlayerManager().getAIHPlayer(p).clicks = 0;
-        AIH.getPlayerManager().getAIHPlayer(p).lastInventoryClose = System.currentTimeMillis();
-        AIH.getPlayerManager().getAIHPlayer(p).lastItemClickDiffs.clear();
+        AIHPlayer aihPlayer = AIH.INSTANCE.getPlayerManager().getAIHPlayer(p);
+
+        if (aihPlayer == null) return;
+
+        aihPlayer.setInventoryOpen(false);
+        aihPlayer.setClicks(0);
+        aihPlayer.getLastClicks().clear();
     }
 
     @EventHandler
     public void onInventoryOpen(InventoryOpenEvent e) {
         Player p = (Player) e.getPlayer();
-        AIH.getPlayerManager().getAIHPlayer(p).lastInventoryOpen = System.currentTimeMillis();
-        AIH.getPlayerManager().getAIHPlayer(p).clicks = 0;
+        AIHPlayer aihPlayer = AIH.INSTANCE.getPlayerManager().getAIHPlayer(p);
+
+        if (aihPlayer == null) return;
+
+        aihPlayer.setLastInventoryOpen(System.currentTimeMillis());
+        aihPlayer.setClicks(0);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onInventoryClick(InventoryClickEvent e) {
         Player p = (Player) e.getWhoClicked();
-        AIH_Player aihPlayer = AIH.getPlayerManager().getAIHPlayer(p);
+        AIHPlayer aihPlayer = AIH.INSTANCE.getPlayerManager().getAIHPlayer(p);
 
-        int ping = PacketEvents.getAPI().getPlayerManager().getPing(p);
+        if (aihPlayer == null) return;
+
         if (p.getGameMode().equals(GameMode.CREATIVE)) return;
 
-        if (!aihPlayer.isInventoryOpen) {
-            if(aihPlayer.clicks++ > 0) {
-                fail(p, "nie ma otwartego gui gdy klika &8ping: " + ping + "ms", true);
-                if(cancelClick || safeCancelClick) {
+        if (!aihPlayer.isInventoryOpen()) {
+            aihPlayer.setClicks(aihPlayer.getClicks() + 1);
+
+            if (aihPlayer.getClicks() > 1) {
+                fail(p, message1, true);
+
+                if (cancelClick || safeCancelClick) {
                     e.setCancelled(true);
                     p.closeInventory();
                 }
@@ -82,110 +139,110 @@ public class Check implements Listener {
         }
 
         if (p.isSprinting()) {
-            fail(p, "sprintuje gdy klika w gui &8ping: " + ping + "ms", false);
-            if(cancelClick || safeCancelClick) {
+            fail(p, message2, false);
+
+            if (cancelClick || safeCancelClick) {
                 p.closeInventory();
             }
         }
 
         if (p.isSneaking()) {
-            fail(p, "kuca gdy klika w gui &8ping: " + ping + "ms", false);
-            if(cancelClick || safeCancelClick) {
+            fail(p, message3, false);
+
+            if (cancelClick || safeCancelClick) {
                 p.closeInventory();
             }
         }
 
         boolean isInvalid = e.getSlotType().equals(InventoryType.SlotType.FUEL) || e.getSlotType().equals(InventoryType.SlotType.CRAFTING) || e.getSlotType().equals(InventoryType.SlotType.RESULT);
-        if(isInvalid) return;
+        if (isInvalid) return;
 
-        if (System.currentTimeMillis() - aihPlayer.lastTimeSuspiciousForChestStealer < 200L) {
-            if(cancelClick) {
+        if (System.currentTimeMillis() - aihPlayer.getLastTimeSuspicious() < 200L) {
+            if (cancelClick) {
                 e.setCancelled(true);
             }
         }
 
-        long lastTimeOpenedInv = aihPlayer.lastInventoryOpen;
+        long lastTimeOpenedInv = aihPlayer.getLastInventoryOpen();
 
         if (System.currentTimeMillis() - lastTimeOpenedInv < 20) {
-            fail(p, "kliknal od razu po otwarciu gui &8otwarl: " + (int) (System.currentTimeMillis() - lastTimeOpenedInv) + "ms temu, ping: " + ping + "ms", false);
-            if(cancelClick || safeCancelClick) {
+            fail(p, message4, false);
+
+            if (cancelClick || safeCancelClick) {
                 p.closeInventory();
                 e.setCancelled(true);
             }
         }
 
-        long lastClick = System.currentTimeMillis() - aihPlayer.lastInventoryClick;
+        long lastClick = System.currentTimeMillis() - aihPlayer.getLastInventoryClick();
 
-        if(e.getCurrentItem() != null && !e.getAction().equals(InventoryAction.NOTHING)) {
-            if(e.getSlot() == aihPlayer.lastClickedSlot && e.getAction().equals(InventoryAction.HOTBAR_MOVE_AND_READD)) return;
+        if (e.getAction().equals(InventoryAction.NOTHING)) return;
 
+        if (aihPlayer.getLastClickedItemStack() != null) {
+            if (aihPlayer.getLastClickedItemStack().getType().equals(e.getCurrentItem().getType())) return;
+        }
+
+        if (!e.getAction().equals(InventoryAction.HOTBAR_SWAP) && !e.getAction().equals(InventoryAction.HOTBAR_MOVE_AND_READD)) {
             if (lastClick < 1L) {
-                if(!e.getAction().equals(InventoryAction.HOTBAR_SWAP)) {
-                    fail(p, "natychmiastowo klika w gui &8instant, ping: " + ping + "ms", false);
+                fail(p, message5, false);
 
-                    if(cancelClick || safeCancelClick) {
+                if (cancelClick || safeCancelClick) {
+                    e.setCancelled(true);
+                }
+            }
+
+            aihPlayer.getLastClicks().add(lastClick);
+
+            if (aihPlayer.getLastClicks().size() >= 5) {
+                double balance = getSquaredBalanceFromLong(aihPlayer.getLastClicks());
+
+                if (balance < 75) {
+                    fail(p, message6, false);
+
+                    aihPlayer.setLastTimeSuspicious(System.currentTimeMillis());
+                    if (cancelClick) {
                         e.setCancelled(true);
                     }
                 }
+                aihPlayer.getLastClicks().remove(0);
             }
-
-            aihPlayer.lastItemClickDiffs.add(lastClick);
-        }
-
-        if (aihPlayer.lastItemClickDiffs.size() >= 5) {
-            double balance = getSquaredBalanceFromLong(aihPlayer.lastItemClickDiffs);
-
-            int minBalance = 75;
-            if(e.getSlot() == aihPlayer.lastClickedSlot && e.getAction().equals(InventoryAction.HOTBAR_SWAP) || e.getAction().equals(InventoryAction.HOTBAR_MOVE_AND_READD)) {
-                minBalance = 8;
-            } else if(e.getSlot() != aihPlayer.lastClickedSlot && e.getAction().equals(InventoryAction.HOTBAR_SWAP) || e.getAction().equals(InventoryAction.HOTBAR_MOVE_AND_READD)) {
-                minBalance = 13;
-            }
-
-            if (balance < minBalance) {
-                fail(p, "ma zbyt podobny czas miedzy kliknieciami &8balans: " + (int) balance + ", ping: " + ping + "ms", false);
-                aihPlayer.lastTimeSuspiciousForChestStealer = System.currentTimeMillis();
-                if(cancelClick) {
-                    e.setCancelled(true);
-                }
-            }
-            aihPlayer.lastItemClickDiffs.remove(0);
         }
 
         int slot = e.getSlot();
+        int lastSlot = aihPlayer.getLastClickedSlot();
+        double distance = distanceBetween(slot, lastSlot);
+        double minClickDelay = e.getAction().equals(InventoryAction.HOTBAR_SWAP) || e.getAction().equals(InventoryAction.HOTBAR_MOVE_AND_READD) ? 20 : distance * 30.0D;
 
-        if(e.getCurrentItem() != null && !e.getAction().equals(InventoryAction.NOTHING)) {
-            int lastSlot = aihPlayer.lastClickedSlot;
-            double distance = distanceBetween(slot, lastSlot);
-            double minClickDelay = e.getAction().equals(InventoryAction.HOTBAR_SWAP) || e.getAction().equals(InventoryAction.HOTBAR_MOVE_AND_READD) ? 23.5D : distance * 30.0D;
+        int vl = lastClick < minClickDelay ? lastClick < minClickDelay / 2.0D ? 8 : 4 : 0;
 
-            int vl = lastClick < minClickDelay ? lastClick < minClickDelay / 2.0D ? 8 : 4 : 0;
+        int suspiciousViolations = aihPlayer.getSuspiciousViolations();
+        int totalVl = suspiciousViolations + vl;
+        aihPlayer.setSuspiciousViolations(totalVl);
 
-            int totalVl = aihPlayer.itemStealerVL += vl;
+        if (vl < 2 && totalVl > 2) {
+            int currentSuspiciousViolations = aihPlayer.getSuspiciousViolations();
+            int deduction = ((lastClick * 2L) > minClickDelay) ? 2 : 1;
+            currentSuspiciousViolations -= deduction;
+            aihPlayer.setSuspiciousViolations(currentSuspiciousViolations);
+        }
 
-            if (vl < 2 && totalVl > 2) {
-                aihPlayer.itemStealerVL -= ((lastClick * 2L) > minClickDelay) ? 2 : 1;
-            }
+        if (totalVl > 4 && vl > 2 && lastClick > 0L) {
+            fail(p, message7, false);
 
-            double speedAttr = lastClick / distance;
-
-            if (totalVl > 4 && vl > 2 && lastClick > 0L && !e.getAction().equals(InventoryAction.MOVE_TO_OTHER_INVENTORY)) {
-                fail(p, "zbyt szybko klika w gui &8" + (int) speedAttr + "ms/slot, ping: " + ping + "ms", false);
-
-                if(cancelClick) {
-                    e.setCancelled(true);
-                }
+            if (cancelClick) {
+                e.setCancelled(true);
             }
         }
 
-        aihPlayer.lastClickedSlot = slot;
-        aihPlayer.lastInventoryClick = System.currentTimeMillis();
+        aihPlayer.setLastClickedSlot(slot);
+        aihPlayer.setLastInventoryClick(System.currentTimeMillis());
+        aihPlayer.setLastClickedItemStack(e.getCurrentItem());
     }
 
     private int[] translatePosition(int slot) {
         int row = slot / 9 + 1;
         int rowPosition = slot - (row - 1) * 9;
-        return new int[] { row, rowPosition };
+        return new int[]{row, rowPosition};
     }
 
     private double distanceBetween(int slot1, int slot2) {
