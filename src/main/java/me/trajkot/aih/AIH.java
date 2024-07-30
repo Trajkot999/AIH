@@ -6,8 +6,8 @@ import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder
 import me.trajkot.aih.check.Check;
 import me.trajkot.aih.command.AIHCommandManager;
 import me.trajkot.aih.config.AIHConfig;
-import me.trajkot.aih.listener.PacketEventsListener;
-import me.trajkot.aih.listener.RegisterListener;
+import me.trajkot.aih.listeners.PacketListener;
+import me.trajkot.aih.listeners.BukkitListener;
 import me.trajkot.aih.player.AIHPlayer;
 import me.trajkot.aih.player.AIHPlayerManager;
 import org.bukkit.Bukkit;
@@ -54,11 +54,11 @@ public final class AIH extends JavaPlugin {
         saveDefaultConfig();
         getCommand("aih").setExecutor(commandManager);
 
-        Bukkit.getServer().getPluginManager().registerEvents(new RegisterListener(), this);
+        Bukkit.getServer().getPluginManager().registerEvents(new BukkitListener(), this);
         Bukkit.getServer().getPluginManager().registerEvents(new Check(), this);
 
         PacketEvents.getAPI().init();
-        PacketEvents.getAPI().getEventManager().registerListener(new PacketEventsListener(), PacketListenerPriority.NORMAL);
+        PacketEvents.getAPI().getEventManager().registerListener(new PacketListener(), PacketListenerPriority.NORMAL);
 
         Bukkit.getServer().getScheduler().scheduleAsyncRepeatingTask(this, () -> {
             Bukkit.getOnlinePlayers().forEach(player -> playerManager.getAIHPlayer(player).resetViolations());

@@ -31,8 +31,6 @@ public class Check implements Listener {
     private final String punishCommand;
     private final String broadcastMessage;
 
-    private final String message1, message2, message3, message4, message5, message6, message7;
-
     public Check() {
         cancelClick = AIH.INSTANCE.getAIHConfig().getConfig().getBoolean("cancel-click");
         safeCancelClick = AIH.INSTANCE.getAIHConfig().getConfig().getBoolean("safe-cancel-click");
@@ -44,16 +42,6 @@ public class Check implements Listener {
         punishCommand = AIH.INSTANCE.getAIHConfig().getConfig().getString("punishments.punish-command");
         broadcastMessage = AIH.INSTANCE.getAIHConfig().getConfig().getString("punishments.broadcast-message");
         maxViolations = AIH.INSTANCE.getAIHConfig().getConfig().getInt("violations.max-violations");
-
-        boolean isEnglish = AIH.INSTANCE.getAIHConfig().getConfig().getString("alerts.message-language").equalsIgnoreCase("English");
-
-        message1 = isEnglish ? "doesn't have an open gui while clicking on items" : "nie ma otwartego gui gdy klika na itemy";
-        message2 = isEnglish ? "is sprinting while clicking on items" : "sprintuje gdy klika na itemy";
-        message3 = isEnglish ? "is sneaking while clicking on items" : "kuca gdy klika na itemy";
-        message4 = isEnglish ? "is clicking on items immediately after opening an gui" : "klika na itemy natychmiast po otwarciu gui";
-        message5 = isEnglish ? "is clicking on items immediately in a gui" : "natychmiastowo klika na itemy w gui";
-        message6 = isEnglish ? "got too similar time between clicking on items" : "ma zbyt podobny czas miedzy kliknieciami na itemy";
-        message7 = isEnglish ? "is clicking on items too fast" : "zbyt szybko klika itemy";
     }
 
     private void fail(Player player, String message, boolean dev) {
@@ -129,7 +117,7 @@ public class Check implements Listener {
             aihPlayer.setClicks(aihPlayer.getClicks() + 1);
 
             if (aihPlayer.getClicks() > 1) {
-                fail(p, message1, true);
+                fail(p, "doesn't have an open gui while clicking on items", true);
 
                 if (cancelClick || safeCancelClick) {
                     e.setCancelled(true);
@@ -139,7 +127,7 @@ public class Check implements Listener {
         }
 
         if (p.isSprinting()) {
-            fail(p, message2, false);
+            fail(p, "is sprinting while clicking on items", false);
 
             if (cancelClick || safeCancelClick) {
                 p.closeInventory();
@@ -147,7 +135,7 @@ public class Check implements Listener {
         }
 
         if (p.isSneaking()) {
-            fail(p, message3, false);
+            fail(p, "is sneaking while clicking on items", false);
 
             if (cancelClick || safeCancelClick) {
                 p.closeInventory();
@@ -166,7 +154,7 @@ public class Check implements Listener {
         long lastTimeOpenedInv = aihPlayer.getLastInventoryOpen();
 
         if (System.currentTimeMillis() - lastTimeOpenedInv < 20) {
-            fail(p, message4, false);
+            fail(p, "is clicking on items immediately after opening an gui", false);
 
             if (cancelClick || safeCancelClick) {
                 p.closeInventory();
@@ -184,7 +172,7 @@ public class Check implements Listener {
 
         if (!e.getAction().equals(InventoryAction.HOTBAR_SWAP) && !e.getAction().equals(InventoryAction.HOTBAR_MOVE_AND_READD)) {
             if (lastClick < 1L) {
-                fail(p, message5, false);
+                fail(p, "is clicking on items immediately in a gui", false);
 
                 if (cancelClick || safeCancelClick) {
                     e.setCancelled(true);
@@ -197,7 +185,7 @@ public class Check implements Listener {
                 double balance = getSquaredBalanceFromLong(aihPlayer.getLastClicks());
 
                 if (balance < 75) {
-                    fail(p, message6, false);
+                    fail(p, "got too similar time between clicking on items", false);
 
                     aihPlayer.setLastTimeSuspicious(System.currentTimeMillis());
                     if (cancelClick) {
@@ -227,7 +215,7 @@ public class Check implements Listener {
         }
 
         if (totalVl > 4 && vl > 2 && lastClick > 0L) {
-            fail(p, message7, false);
+            fail(p, "is clicking on items too fast", false);
 
             if (cancelClick) {
                 e.setCancelled(true);

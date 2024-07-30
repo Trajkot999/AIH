@@ -7,10 +7,6 @@ alerts:
   # When the check is experimental
   dev-symbol: '*'
 
-  # Language of the alert message (Example: Player is clicking on items too fast)
-  # Select: English or Polish
-  message-language: 'English'
-
 punishments:
   # Example: 'kick %player% &6&lAntiCheat &7- Unfair Advantage!'
   punish-command: ''
