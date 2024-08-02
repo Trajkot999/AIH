@@ -1,0 +1,27 @@
+prefix: '&6&lAIH &8>'
+
+alerts:
+  # Placeholders: %prefix%, %player%, %message%, %ping%, %dev%, %vl%, %maxvl%
+  alert-message: '%prefix% &e%player% &7%message%&c%dev% &6x%vl%/%maxvl%'
+
+  # When the check is experimental
+  dev-symbol: '*'
+
+  update-message: true
+
+punishments:
+  # Example: 'kick %player% &6&lAntiCheat &7- Unfair Advantage'
+  punish-command: ''
+
+  # Example: '&6&lAntiCheat &8> &e%player% &7has been removed due to cheating'
+  broadcast-message: ''
+
+violations:
+  # The maximum check violations, when violations are higher than max-violations the punishment command will be executed
+  max-violations: 25
+
+  # Online players violations reset interval (in minutes)
+  violations-reset-interval: 5
+
+# If someone is suspected of cheating should the slot click be cancelled
+cancel-click: true
